@@ -25,6 +25,7 @@
 #define GRAPHLAB_HAS_LOAD_HPP
 
 #include <typeinfo>
+#include <boost/core/enable_if.hpp>
 
 
 namespace graphlab {

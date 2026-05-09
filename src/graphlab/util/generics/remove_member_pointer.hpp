@@ -43,9 +43,6 @@
 #include <boost/config.hpp>
 #include <boost/detail/workaround.hpp>
 
-// should be the last #include
-#include <boost/type_traits/detail/type_trait_def.hpp>
-
 namespace boost {
 
 #if !defined(BOOST_TT_PREPROCESSING_MODE)
@@ -3064,13 +3061,11 @@ struct rem_mem_pointer_impl<R (T::*volatile)( T0 , T1 , T2 , T3 , T4 , T5 , T6 ,
 
 #ifndef BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION
 
-BOOST_TT_AUX_TYPE_TRAIT_DEF1(remove_member_pointer,T, typename detail::rem_mem_pointer_impl<T>::type)
+template<typename T> struct remove_member_pointer { typedef typename detail::rem_mem_pointer_impl<T>::type type; };
 
 #endif
 
 } // namespace boost
-
-#include <boost/type_traits/detail/type_trait_undef.hpp>
 
 #endif // BOOST_TT_REMOVE_MEMBER_POINTER_HPP_INCLUDED
 

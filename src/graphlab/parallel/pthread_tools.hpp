@@ -426,7 +426,11 @@ namespace graphlab {
 #define atomic_inc(P) __sync_add_and_fetch((P), 1)
 #define atomic_add(P, V) __sync_add_and_fetch((P), (V))
 #define atomic_set_bit(P, V) __sync_or_and_fetch((P), 1<<(V))
+#ifdef __aarch64__
+#define cpu_relax() __asm__ __volatile__("yield" ::: "memory")
+#else
 #define cpu_relax() asm volatile("pause\n": : :"memory")
+#endif
 
   /**
    * \class spinrwlock
@@ -456,7 +460,7 @@ namespace graphlab {
       unsigned me = atomic_xadd(&l.u, (1<<16));
       unsigned char val = (unsigned char)(me >> 16);
     
-      while (val != l.s.write) asm volatile("pause\n": : :"memory");
+      while (val != l.s.write) cpu_relax();
       writing = true;
     }
 
@@ -468,14 +472,14 @@ namespace graphlab {
     
       *(volatile unsigned short *) (&l) = t.us;
       writing = false;
-      __asm("mfence");
+      __sync_synchronize();
     }
 
     inline void readlock() const {
       unsigned me = atomic_xadd(&l.u, (1<<16));
       unsigned char val = (unsigned char)(me >> 16);
     
-      while (val != l.s.read) asm volatile("pause\n": : :"memory");
+      while (val != l.s.read) cpu_relax();
       l.s.read++;
     }
 

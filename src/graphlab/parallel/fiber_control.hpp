@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 #include <cstdlib>
-#include <boost/context/all.hpp>
+#include <graphlab/parallel/fiber_context_compat.hpp>
 #include <boost/function.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <graphlab/util/dense_bitset.hpp>
@@ -47,7 +47,7 @@ class fiber_control {
   struct fiber {
     simple_spinlock lock;
     fiber_control* parent;
-    boost::context::fcontext_t* context;
+    fiber_compat::fcontext_t context;
     void* stack;
     size_t id;
     affinity_type affinity;
@@ -120,7 +120,7 @@ class fiber_control {
     fiber* cur_fiber; // the fiber we are context switching to
     fiber* garbage; // A fiber to delete after the context switch
     size_t workerid;
-    boost::context::fcontext_t base_context;
+    fiber_compat::fcontext_t base_context;
   };
 
   static pthread_key_t tlskey; // points to the tls structure above
@@ -140,7 +140,7 @@ class fiber_control {
 
   void reschedule_fiber(size_t workerid, fiber* pfib);
   void yield_to(fiber* next_fib);
-  static void trampoline(intptr_t _args);
+  static void trampoline(fiber_compat::transfer_t _transfer);
 
   void (*flsdeleter)(void*);
 

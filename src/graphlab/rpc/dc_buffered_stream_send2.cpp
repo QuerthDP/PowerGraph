@@ -100,7 +100,7 @@ namespace dc_impl {
           buffer_elem** next = &bufs.first->next;
           volatile buffer_elem** n = (volatile buffer_elem**)(next);
           while(__unlikely__((*n) == NULL)) {
-            asm volatile("pause\n": : :"memory");
+            cpu_relax();
           }
           bufs.first = (buffer_elem*)(*n);
           delete prev;

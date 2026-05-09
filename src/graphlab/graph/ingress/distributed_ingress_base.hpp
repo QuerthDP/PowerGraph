@@ -559,7 +559,7 @@ namespace graphlab {
     /**
      * \brief Gather the vertex distributed meta data.
      */
-    vertex_negotiator_record finalize_gather(lvid_type& lvid, graph_type& graph) {
+    vertex_negotiator_record finalize_gather(lvid_type lvid, graph_type& graph) {
         vertex_negotiator_record accum;
         accum.num_in_edges = graph.local_graph.num_in_edges(lvid);
         accum.num_out_edges = graph.local_graph.num_out_edges(lvid);

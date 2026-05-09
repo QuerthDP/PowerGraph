@@ -3256,13 +3256,13 @@ namespace graphlab {
 
 
     template<typename Fstream, typename Writer>
-    void save_vertex_to_stream(vertex_type& vertex, Fstream& fout, Writer writer) {
+    void save_vertex_to_stream(vertex_type vertex, Fstream& fout, Writer writer) {
       fout << writer.save_vertex(vertex);
     } // end of save_vertex_to_stream
 
 
     template<typename Fstream, typename Writer>
-    void save_edge_to_stream(edge_type& edge, Fstream& fout, Writer writer) {
+    void save_edge_to_stream(edge_type edge, Fstream& fout, Writer writer) {
       std::string ret = writer.save_edge(edge);
       fout << ret;
     } // end of save_edge_to_stream

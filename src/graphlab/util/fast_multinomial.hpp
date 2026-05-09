@@ -196,7 +196,7 @@ namespace graphlab {
         while(true) {
           float_t sum = (*sibling1) + (*sibling2);
           (*parent) = sum;
-          __asm("mfence");
+          __sync_synchronize();
           float_t sum2 = (*sibling1) + (*sibling2);
           float_t parentval = (*parent);
           if (sum2 == parentval) break;

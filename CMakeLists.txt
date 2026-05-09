@@ -2,7 +2,7 @@ project(GraphLab)
 
 # We require the most recent version of cmake and automatically
 # install the correct version when using the cmake lists
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # Libraries linked via full path no longer produce linker search paths.
 cmake_policy(SET CMP0003 NEW)
@@ -148,8 +148,7 @@ install(CODE "execute_process(COMMAND ./scripts/install_deps.sh
 # https://bitbucket.org/eigen/eigen/
 ExternalProject_Add(eigen
   PREFIX ${GraphLab_SOURCE_DIR}/deps/eigen
-  URL http://bitbucket.org/eigen/eigen/get/3.1.2.tar.bz2
-  URL_MD5 e9c081360dde5e7dcb8eba3c8430fde2
+  URL https://gitlab.com/libeigen/eigen/-/archive/3.2.0/eigen-3.2.0.tar.bz2
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   BUILD_IN_SOURCE 1
@@ -165,8 +164,7 @@ endmacro(requires_eigen)
 # libbz  =================================================================
 ExternalProject_Add(libbz2
   PREFIX ${GraphLab_SOURCE_DIR}/deps/libbz2
-  URL http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz
-  URL_MD5 00b516f4704d4a7cb50a1d97e6e8e15b
+  URL https://sourceware.org/pub/bzip2/bzip2-1.0.6.tar.gz
   INSTALL_DIR ${GraphLab_SOURCE_DIR}/deps/local
   CONFIGURE_COMMAND ""
   PATCH_COMMAND patch -N -p0 -i ${GraphLab_SOURCE_DIR}/patches/libbz2_fpic.patch || true
@@ -177,53 +175,20 @@ ExternalProject_Add(libbz2
 
 
 
-# Build Boost =================================================================
-# GraphLab relies heavily on the boost library for parsing program
-# options, filesystem support, random number generation, and
-# unordered containers.
-ExternalProject_Add(boost
-  PREFIX ${GraphLab_SOURCE_DIR}/deps/boost
-  URL "http://tcpdiag.dl.sourceforge.net/project/boost/boost/1.53.0/boost_1_53_0.tar.gz" 
-  URL_MD5 57a9e2047c0f511c4dfcf00eb5eb2fbb
-  BUILD_IN_SOURCE 1
-  CONFIGURE_COMMAND
-  ./bootstrap.sh
-  --with-libraries=filesystem
-  --with-libraries=program_options
-  --with-libraries=system
-  --with-libraries=iostreams
-  --with-libraries=date_time
-  --with-libraries=random
-  --with-libraries=context
-  --prefix=<INSTALL_DIR>
-  BUILD_COMMAND
-  C_INCLUDE_PATH=${GraphLab_SOURCE_DIR}/deps/local/include
-  CPLUS_INCLUDE_PATH=${GraphLab_SOURCE_DIR}/deps/local/include
-  LIBRARY_PATH=${GraphLab_SOURCE_DIR}/deps/local/lib
-  ./b2 install link=static variant=release threading=multi runtime-link=static
-  INSTALL_COMMAND ""
-  INSTALL_DIR ${GraphLab_SOURCE_DIR}/deps/local )
-set(BOOST_ROOT ${GraphLab_SOURCE_DIR}/deps/local )
-set(BOOST_LIBS_DIR ${GraphLab_SOURCE_DIR}/deps/local/lib)
+# Use system Boost from Homebrew
+include_directories(/opt/homebrew/opt/boost/include)
+link_directories(/opt/homebrew/opt/boost/lib)
+add_custom_target(boost)
+
 set(Boost_LIBRARIES
-  ${BOOST_LIBS_DIR}/libboost_filesystem.a
-  ${BOOST_LIBS_DIR}/libboost_program_options.a
-  ${BOOST_LIBS_DIR}/libboost_system.a
-  ${BOOST_LIBS_DIR}/libboost_iostreams.a
-  ${BOOST_LIBS_DIR}/libboost_context.a
-  ${BOOST_LIBS_DIR}/libboost_date_time.a)
-add_dependencies(boost libbz2)
+  /opt/homebrew/opt/boost/lib/libboost_filesystem.a
+  /opt/homebrew/opt/boost/lib/libboost_program_options.a
+  /opt/homebrew/opt/boost/lib/libboost_iostreams.a
+  /opt/homebrew/opt/boost/lib/libboost_context.a
+  /opt/homebrew/opt/boost/lib/libboost_date_time.a
+)
+
 message(STATUS "Boost libs: " ${Boost_LIBRARIES})
-# add_definitions(-DBOOST_DATE_TIME_POSIX_TIME_STD_CONFIG)
-# add_definitions(-DBOOST_ALL_DYN_LINK)
-# set(Boost_SHARED_LIBRARIES "")
-foreach(blib ${Boost_LIBRARIES})
-  message(STATUS "Boost libs: " ${blib})
-  string(REGEX REPLACE "\\.a$" ${CMAKE_SHARED_LIBRARY_SUFFIX} bout ${blib})
-  message(STATUS "Boost dyn libs: " ${bout})
-  set(Boost_SHARED_LIBRARIES ${Boost_SHARED_LIBRARIES} ${bout})
-endforeach()
-message(STATUS "Boost Shared libs: " ${Boost_SHARED_LIBRARIES})
 
 if(NOT NO_TCMALLOC)
     if(APPLE)
@@ -344,26 +309,10 @@ endmacro(requires_opencv)
 # LibEvent is used in the RPC layer to manage the interaction between the
 # TCP stack and the event handler threads
 
-if (APPLE)
-  ExternalProject_Add(libevent
-    PREFIX ${GraphLab_SOURCE_DIR}/deps/event
-    URL http://iweb.dl.sourceforge.net/project/levent/libevent/libevent-2.0/libevent-2.0.18-stable.tar.gz
-    URL_MD5 aa1ce9bc0dee7b8084f6855765f2c86a
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-openssl --enable-shared=no
-    INSTALL_DIR ${GraphLab_SOURCE_DIR}/deps/local
-  )
-else()
-  ExternalProject_Add(libevent
-    PREFIX ${GraphLab_SOURCE_DIR}/deps/event
-    URL http://iweb.dl.sourceforge.net/project/levent/libevent/libevent-2.0/libevent-2.0.18-stable.tar.gz
-    URL_MD5 aa1ce9bc0dee7b8084f6855765f2c86a
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-openssl --enable-shared=no
-    INSTALL_DIR ${GraphLab_SOURCE_DIR}/deps/local
-    INSTALL_COMMAND prefix=<INSTALL_DIR>/ make install && ${GraphLab_SOURCE_DIR}/patches/libevent_clean_and_remap.sh <INSTALL_DIR>/lib
-  )
-endif()
-#link_libraries(event)
-#link_libraries(event_pthreads)
+# Use system libevent from Homebrew
+include_directories(/opt/homebrew/opt/libevent/include)
+link_directories(/opt/homebrew/opt/libevent/lib)
+add_custom_target(libevent)
 
 
 # libjson ====================================================================
@@ -386,8 +335,7 @@ endif()
 
 ExternalProject_Add(zookeeper
   PREFIX ${GraphLab_SOURCE_DIR}/deps/zookeeper
-  URL http://mirror.metrocast.net/apache/zookeeper/zookeeper-3.5.1-alpha/zookeeper-3.5.1-alpha.tar.gz
-  URL_MD5 d85f9751724d3f20f792803b61c4db24
+  URL https://archive.apache.org/dist/zookeeper/zookeeper-3.4.5/zookeeper-3.4.5.tar.gz
   PATCH_COMMAND ${CMAKE_COMMAND} -E copy_directory ${GraphLab_SOURCE_DIR}/patches/zookeeper/ <SOURCE_DIR>
   BUILD_IN_SOURCE 1
   CONFIGURE_COMMAND ./configure --prefix=<INSTALL_DIR> --disable-shared
@@ -461,13 +409,12 @@ else()
   #find_package(MPICH2)
   find_package(MPI) 
   if(MPI_FOUND)
-    message(STATUS "MPI Found: " ${MPI_LIBRARY} ${MPI_EXTRA_LIBRARY})
+    message(STATUS "MPI Found: " ${MPI_CXX_LIBRARIES})
     add_definitions(-DHAS_MPI)
-    include_directories(${MPI_INCLUDE_PATH})
+    include_directories(${MPI_CXX_INCLUDE_PATH})
   else(MPI_FOUND)
     message(STATUS "MPI Not Found! Distributed Executables will not be compiled")
-    set(MPI_LIBRARY "")
-    set(MPI_EXTRA_LIBRARY "")
+    set(MPI_CXX_LIBRARIES "")
     # ExternalProject_Add(openmpi
     #   PREFIX ${GraphLab_SOURCE_DIR}/deps/openmpi
     #   URL http://www.open-mpi.org/software/ompi/v1.4/downloads/openmpi-1.4.5.tar.gz
@@ -499,7 +446,7 @@ macro(requires_core_deps NAME)
     zookeeper_mt)
   add_dependencies(${NAME} boost libevent zookeeper)
   if(MPI_FOUND)
-    target_link_libraries(${NAME} ${MPI_LIBRARY} ${MPI_EXTRA_LIBRARY})
+    target_link_libraries(${NAME} ${MPI_CXX_LIBRARIES})
   endif(MPI_FOUND)
   if(HADOOP_FOUND)
     target_link_libraries(${NAME} hdfs ${JAVA_JVM_LIBRARY})
@@ -650,12 +597,11 @@ macro(ADD_CXXTEST NAME)
       DEPENDS ${ARGV}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       )
+    add_graphlab_executable(${NAME}test ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cpp)
+    set_source_files_properties( ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cpp
+      PROPERTIES COMPILE_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}" )
+    add_test(${NAME} ${NAME}test)
   endif(PYTHONINTERP_FOUND)
-  add_graphlab_executable(${NAME}test ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cpp)
-  set_source_files_properties( ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.cpp
-    PROPERTIES COMPILE_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}" )
-
-  add_test(${NAME} ${NAME}test)
 endmacro(ADD_CXXTEST)
 
 
@@ -727,7 +673,7 @@ endmacro(add_extension_executable)
 
 
 add_custom_target(external_dependencies)
-requires_core_deps(external_dependencies)
+add_dependencies(external_dependencies boost libevent zookeeper)
 
 # add_jni_library =============================================================
 # If jni was found then create a jni library.  Otherwise generate a warning

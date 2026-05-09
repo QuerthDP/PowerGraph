@@ -152,7 +152,7 @@ fiber_control::fiber* fiber_control::try_pop_queue(inplace_lf_queue2<fiber>& lfq
     ret = popped_queue;
     do {
       popped_queue = ret->next;
-      asm volatile("pause\n": : :"memory");
+      cpu_relax();
     } while(popped_queue == NULL);
     // we have reached the end of the queue. clear the popped queue
     // and return
@@ -244,14 +244,20 @@ struct trampoline_args {
 };
 
 // the trampoline to call the user function. This function never returns
-void fiber_control::trampoline(intptr_t _args) {
+void fiber_control::trampoline(fiber_compat::transfer_t _transfer) {
   // we may have launched to here by switching in from another fiber.
   // we will need to clean up the previous fiber
   tls* t = get_tls_ptr();
+  // Save the source context from the transfer
+  if (t->prev_fiber) {
+    t->prev_fiber->context = _transfer.fctx;
+  } else {
+    t->base_context = _transfer.fctx;
+  }
   if (t->prev_fiber) t->parent->reschedule_fiber(t->workerid, t->prev_fiber);
   t->prev_fiber = NULL;
 
-  trampoline_args* args = reinterpret_cast<trampoline_args*>(_args);
+  trampoline_args* args = reinterpret_cast<trampoline_args*>(_transfer.data);
   try {
     args->fn();
   } catch (...) {
@@ -292,7 +298,7 @@ size_t fiber_control::launch(boost::function<void(void)> fn,
   args->fn = fn;
   fib->initial_trampoline_args = (intptr_t)(args);
   // stack grows downwards.
-  fib->context = boost::context::make_fcontext((char*)fib->stack + stacksize,
+  fib->context = fiber_compat::make_fcontext((char*)fib->stack + stacksize,
                                                stacksize,
                                                trampoline);
   fibers_active.inc();
@@ -338,15 +344,17 @@ void fiber_control::yield_to(fiber* next_fib) {
     // next fiber move to current
     t->prev_fiber = t->cur_fiber;
     t->cur_fiber = next_fib;
-    if (t->prev_fiber != NULL) {
-      // context switch to fib outside the lock
-      boost::context::jump_fcontext(t->prev_fiber->context,
-                                    t->cur_fiber->context,
-                                    t->cur_fiber->initial_trampoline_args);
+    // context switch to fib outside the lock
+    fiber_compat::transfer_t ret =
+        fiber_compat::jump_fcontext(
+            t->cur_fiber->context,
+            t->cur_fiber->initial_trampoline_args);
+    // After resume: save the source context returned by the jumper
+    t = get_tls_ptr();
+    if (t->prev_fiber) {
+      t->prev_fiber->context = ret.fctx;
     } else {
-      boost::context::jump_fcontext(&t->base_context,
-                                    t->cur_fiber->context,
-                                    t->cur_fiber->initial_trampoline_args);
+      t->base_context = ret.fctx;
     }
   } else {
     // ok. there isn't anything to schedule to
@@ -362,9 +370,15 @@ void fiber_control::yield_to(fiber* next_fib) {
       // (as identifibed by cur_fiber = NULL)
       t->prev_fiber = t->cur_fiber;
       t->cur_fiber = NULL;
-      boost::context::jump_fcontext(t->prev_fiber->context,
-                                    &t->base_context,
-                                    0);
+      fiber_compat::transfer_t ret =
+          fiber_compat::jump_fcontext(t->base_context, 0);
+      // After resume (for descheduled fibers that get rescheduled):
+      t = get_tls_ptr();
+      if (t->prev_fiber) {
+        t->prev_fiber->context = ret.fctx;
+      } else {
+        t->base_context = ret.fctx;
+      }
     } else {
       // nothing to do, and not terminating...
       // then don't yield!

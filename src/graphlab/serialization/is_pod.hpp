@@ -46,10 +46,10 @@ namespace graphlab {
   struct gl_is_pod{
     // it is a pod and is not an integer since we have special handlings for integers
 
-    BOOST_STATIC_CONSTANT(bool, value = (boost::type_traits::ice_or<
-                                            boost::is_scalar<T>::value,
+    BOOST_STATIC_CONSTANT(bool, value = (
+                                            boost::is_scalar<T>::value ||
                                             boost::is_base_of<IS_POD_TYPE, T>::value
-                                          >::value));
+                                          ));
 
     // standard POD detection is no good because things which contain pointers
     // are POD, but are not serializable
@@ -75,9 +75,8 @@ namespace graphlab {
   struct gl_is_pod_or_scaler{
     BOOST_STATIC_CONSTANT(bool, value =
                           (
-                           boost::type_traits::ice_or<
-                             boost::is_scalar<T>::value,
-                             gl_is_pod<T>::value>::value
+                             boost::is_scalar<T>::value ||
+                             gl_is_pod<T>::value
                           ));
   };
 }
